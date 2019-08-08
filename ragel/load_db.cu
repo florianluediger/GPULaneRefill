@@ -3,12 +3,12 @@
 #include <vector>
 #include <iostream>
 #include <ctime>
-#include "../dog-qc/dogqc/include/csv.h"
-#include "../dog-qc/dogqc/include/util.h"
-#include "../dog-qc/dogqc/include/mappedmalloc.h"
+#include "../dogqc/include/csv.h"
+#include "../dogqc/include/util.h"
+#include "../dogqc/include/mappedmalloc.h"
 
-#define LINE_COUNT 21513695
-#define FILENAME "../data/dblp/dblp_0.01_data.csv"
+#define LINE_COUNT          // number of lines in the dataset
+#define FILENAME ""         // path to csv file containing one string per line
 
 int main()
 {

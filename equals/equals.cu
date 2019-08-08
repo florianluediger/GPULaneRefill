@@ -1,19 +1,20 @@
 #include <iostream>
 #include <ctime>
-#include "../dog-qc/dogqc/include/csv.h"
-#include "../dog-qc/dogqc/include/util.h"
-#include "../dog-qc/dogqc/include/mappedmalloc.h"
+#include "../dogqc/include/csv.h"
+#include "../dogqc/include/util.h"
+#include "../dogqc/include/mappedmalloc.h"
 
-#define BLOCK_SIZE 
-#define KERNEL_NAME bufferKernel
-#define COMPARISON_OPERATOR <       // != for equality test; < for prefix test
+#define BLOCK_SIZE              // e.g. {32,64,96,128,160,192,224,256,384,512,640,786}
+#define KERNEL_NAME             // e.g. {naiveKernel,bufferKernel,unrollKernel}
+#define COMPARISON_OPERATOR <   // != for equality test; < for prefix test
+
 #define ALL_LANES 0xffffffff
 
 __global__
 void unrollKernel(int *character_offset, char *book_content, char *search_string, int search_string_length, int line_count, int *number_of_matches) {
     bool active = 1;            // gets set to 0 when selection fails
-    bool flush_pipeline = 0;     // break computation when every line is finished/inactive
-    unsigned loop_var = ((blockIdx.x * blockDim.x) + threadIdx.x);       // global index of the current iteration
+    bool flush_pipeline = 0;    // break computation when every line is finished/inactive
+    unsigned loop_var = ((blockIdx.x * blockDim.x) + threadIdx.x);      // global index of the current iteration
     unsigned step = (blockDim.x * gridDim.x);                           // offset for the next element to be computed
     unsigned current_element = 0;       // current element to be computed
     unsigned buffercount = 0;
@@ -96,8 +97,8 @@ void unrollKernel(int *character_offset, char *book_content, char *search_string
 __global__
 void bufferKernel(int *character_offset, char *book_content, char *search_string, int search_string_length, int line_count, int *number_of_matches) {
     bool active = 1;            // gets set to 0 when selection fails
-    bool flush_pipeline = 0;     // break computation when every line is finished/inactive
-    unsigned loop_var = ((blockIdx.x * blockDim.x) + threadIdx.x);       // global index of the current iteration
+    bool flush_pipeline = 0;    // break computation when every line is finished/inactive
+    unsigned loop_var = ((blockIdx.x * blockDim.x) + threadIdx.x);      // global index of the current iteration
     unsigned step = (blockDim.x * gridDim.x);                           // offset for the next element to be computed
     unsigned current_element = 0;       // current element to be computed
     unsigned buffercount = 0;
@@ -176,11 +177,11 @@ void bufferKernel(int *character_offset, char *book_content, char *search_string
 }
 
 __global__
-void equalsKernel(int *character_offset, char *book_content, char *search_string, int search_string_length, int line_count, int *number_of_matches) {
-    bool active = 1;            // gets set to 0 when selection fails
-    bool flush_pipeline = 0;     // break computation when every line is finished/inactive
-    unsigned loop_var = ((blockIdx.x * blockDim.x) + threadIdx.x);       // global index of the element to be computed
-    unsigned step = (blockDim.x * gridDim.x);                           // offset for the next element to be computed
+void naiveKernel(int *character_offset, char *book_content, char *search_string, int search_string_length, int line_count, int *number_of_matches) {
+    bool active = 1;                // gets set to 0 when selection fails
+    bool flush_pipeline = 0;        // break computation when every line is finished/inactive
+    unsigned loop_var = ((blockIdx.x * blockDim.x) + threadIdx.x);  // global index of the element to be computed
+    unsigned step = (blockDim.x * gridDim.x);                       // offset for the next element to be computed
 
     while(!flush_pipeline) {
         active = loop_var < line_count;
@@ -204,37 +205,10 @@ void equalsKernel(int *character_offset, char *book_content, char *search_string
     }
 }
 
-__global__
-void oldKernel(int *character_offset, char *book_content, char *search_string, int search_string_length, int line_count, int *number_of_matches) {
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    int step = blockDim.x * gridDim.x;
-    
-    bool broke = false;
-    for (int current_line = index; current_line < line_count; current_line += step) {
-
-        // If the lengths of the strings don't match, the string can be discarded immediately
-        if (character_offset[current_line+1] - character_offset[current_line] - 1 COMPARISON_OPERATOR search_string_length)
-            continue;
-
-        broke = false;
-        for (int j = 0; j < search_string_length; j++) {
-
-            // Check, if the characters at the same position are equal
-            if (book_content[j + character_offset[current_line]] != search_string[j]) {
-                broke = true;
-                break;
-            }
-        }
-
-        if (!broke)
-            atomicAdd(number_of_matches, 1);
-    }
-}
-
 int main(int argc, char *argv[]) {
     int grid_size = atoi(argv[1]);
 
-    // ### Create pointers to memory mapped files### 
+    // ### Create pointers to memory mapped files ### 
 
     std::clock_t start_import = std::clock();
     
@@ -297,7 +271,7 @@ int main(int argc, char *argv[]) {
 
     std::clock_t stop_cuda_get_result = std::clock();
 
-    //printf("Number of matches is: %d\n", *number_of_matches);
+    printf("Number of matches is: %d\n", *number_of_matches);
 
     // ### Free the memory on the GPU ###
 
@@ -311,16 +285,16 @@ int main(int argc, char *argv[]) {
 
     std::clock_t stop_cuda_free = std::clock();
 
-    std::cout << (stop_test_kernel - start_test_kernel) / (double)(CLOCKS_PER_SEC / 1000) << std::endl;
+    // std::cout << (stop_test_kernel - start_test_kernel) / (double)(CLOCKS_PER_SEC / 1000) << std::endl;
 
-    /*std::cout << "grid size: " << grid_size << std::endl;
+    std::cout << "grid size: " << grid_size << std::endl;
     std::cout << "block_size: " << BLOCK_SIZE << std::endl;
     std::cout << "import: " << (stop_import - start_import) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     std::cout << "cuda malloc: " << (stop_cuda_malloc - start_cuda_malloc) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     std::cout << "cuda memcopy: " << (stop_cuda_memcpy - start_cuda_memcpy) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     std::cout << "test kernel: " << (stop_test_kernel - start_test_kernel) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
     std::cout << "retrieve result: " << (stop_cuda_get_result - start_cuda_get_result) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
-    std::cout << "cuda free: " << (stop_cuda_free - start_cuda_free) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;*/
+    std::cout << "cuda free: " << (stop_cuda_free - start_cuda_free) / (double)(CLOCKS_PER_SEC / 1000) << " ms" << std::endl;
 
     return 0;
 }
