@@ -2,9 +2,12 @@ import math
 import random
 import os
 
-part_csv_file = "../data/dblp/dblp_titles.csv"
-output_file_prefix = "../data/dblp/small/dblp_"
+part_csv_file = "./data/dblp_titles.csv"
+output_file_prefix = "./data/small/dblp_"
 inject_string = "performance optimization of gpu string processing"
+
+selectivities = [0.01,0.32]
+# selectivities = [0.0025,0.005,0.01,0.02,0.04,0.08,0.16,0.32,0.64]
 
 
 def inject_matching_string(selectivity):
@@ -39,7 +42,5 @@ def inject_matching_string(selectivity):
     print(selectivity)
     print("file written")
 
-sel = 0.02
-inject_matching_string(sel)
-sel = 0.08
-inject_matching_string(sel)
+for sel in selectivities:
+    inject_matching_string(sel)

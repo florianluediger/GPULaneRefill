@@ -1,3 +1,4 @@
+// Author of this file: Henning Funke
 
 #define ERROR(msg) \
     fprintf(stderr, "ERROR: %s\n", msg); \

@@ -1,3 +1,5 @@
+// Author of this file: Henning Funke
+
 #include "util.cuh"
 
 

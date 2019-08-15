@@ -1,3 +1,5 @@
+// Author of this file: Henning Funke
+
 #pragma once
 
 #define ALL_LANES 0xffffffff

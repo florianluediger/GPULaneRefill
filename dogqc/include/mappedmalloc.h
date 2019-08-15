@@ -1,3 +1,5 @@
+// Author of this file: Henning Funke
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>

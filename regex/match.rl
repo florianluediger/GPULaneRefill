@@ -32,6 +32,7 @@ __inline__ __device__ bool cmpLike ( char c, char l ) {
     return ( c == l ) || ( l == '_' );
 }
 
+// Author of this function: Henning Funke
 __device__ bool stringLikeCheck ( str_t string, str_t like ) {
     char *sPos, *lPos, *sTrace, *lTrace;
     char *lInStart = like.start;
